@@ -1,5 +1,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <iostream>
@@ -33,51 +34,101 @@ int main() {
     std::cout << "Conectado ao servidor!" << std::endl;
 
     char buffer[MAX_MSG_SIZE];
-    string command, filename;
+    string command, file_name;
     while (true) {
+        int has_file;
         cout << "Enter command: ";
         getline(cin, command);
-        ifstream file(command.c_str(), ios::binary | ios::ate);
-        if (!file) {
-            perror("Erro ao abrir o arquivo");
-            return 1;
-        }
-
-        // Obter o tamanho do arquivo
-        streampos fileSize = file.tellg();
-        file.seekg(0, ios::beg);
-
-        
-        if (command == "teste"){
-           
-        }
-        if (command == "exit") {
+        const char* command_str = command.c_str();
+        if (command == "exit"){
+            send(socket_fd, command_str, sizeof(command_str), 0);
             break;
         }
+        else if(command.substr(0, 12) == "select file "){
+            file_name = command.substr(12);
 
-        if(send(socket_fd, command.c_str(), sizeof(command.c_str()), 0) > 0){
-            while(recv(socket_fd, buffer, sizeof(buffer), 0) < 0){
-                send(socket_fd, command.c_str(), sizeof(command.c_str()), 0);
+            ifstream file(file_name);
+            if (file.good()){
+                cout << file_name << " selected" << endl;
+                has_file = 1;
             }
-            std::cout << buffer << std::endl;
+            else{
+                has_file = 0;
+            }
+        }
+        else if(command == "send file"){
+            if(has_file != 1){
+                cout << "no file slected!" << endl;
+                continue;
+            }
+            send(socket_fd, file_name.c_str(), sizeof(file_name), 0);
+            ifstream file(file_name);
+            streampos fileSize = file.tellg();
+            cout << fileSize << endl;
+            while (!file.eof()) {
+                // Ler o próximo pacote do arquivo
+                cout << "Leitura " << fileSize << endl;  
+                file.read(buffer, sizeof(buffer));
+                size_t bytesRead = file.gcount();
+
+                // Enviar o pacote para o servidor
+                if (send(socket_fd, buffer, bytesRead, 0) < 0) {
+                    perror("Erro ao enviar dados do arquivo para o servidor");
+                    return 1;   
+                }
+
+                fileSize -= bytesRead;
+            }
+    
+
+            // Fechar o arquivo
+            file.close();
         }
 
-        while (fileSize > 0) {
-            // Ler o próximo pacote do arquivo
-            file.read(buffer, sizeof(buffer));
-            size_t bytesRead = file.gcount();
 
-            // Enviar o pacote para o servidor
-            if (send(socket_fd, buffer, bytesRead, 0) < 0) {
-                perror("Erro ao enviar dados do arquivo para o servidor");
-                return 1;
-            }
+        
 
-            fileSize -= bytesRead;
-        }
+        // ifstream file(command.c_str(), ios::binary | ios::ate);
+        // if (!file) {
+        //     perror("Erro ao abrir o arquivo");
+        //     return 1;
+        // }
 
-        // Fechar o arquivo
-        file.close();
+        // // Obter o tamanho do arquivo
+        // streampos fileSize = file.tellg();
+        // file.seekg(0, ios::beg);
+
+        
+        // if (command == "teste"){
+           
+        // }
+        // if (command == "exit") {
+        //     break;
+        // }
+
+        // if(send(socket_fd, command.c_str(), sizeof(command.c_str()), 0) > 0){
+        //     while(recv(socket_fd, buffer, sizeof(buffer), 0) < 0){
+        //         send(socket_fd, command.c_str(), sizeof(command.c_str()), 0);
+        //     }
+        //     std::cout << buffer << std::endl;
+        // }
+
+        // while (fileSize > 0) {
+        //     // Ler o próximo pacote do arquivo
+        //     file.read(buffer, sizeof(buffer));
+        //     size_t bytesRead = file.gcount();
+
+        //     // Enviar o pacote para o servidor
+        //     if (send(socket_fd, buffer, bytesRead, 0) < 0) {
+        //         perror("Erro ao enviar dados do arquivo para o servidor");
+        //         return 1;
+        //     }
+
+        //     fileSize -= bytesRead;
+        // }
+
+        // // Fechar o arquivo
+        // file.close();
     }    
     // Usa o socket...
     
