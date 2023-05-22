@@ -55,7 +55,6 @@ int connect(char* version, char* port){
       return socketfd4;
    }
    else{
-      cout << atoi(port) << endl;
       struct sockaddr_in6 server_addr;
       server_addr.sin6_family = AF_INET6;
       server_addr.sin6_port = htons(atoi(port));
